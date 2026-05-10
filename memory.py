@@ -18,12 +18,12 @@ from typing import List, Dict, Optional, Any
 logger = logging.getLogger("feishu-agents.memory")
 
 # ============ 配置 ============
-MEMORY_DB_PATH = os.environ.get("MEMORY_DB_PATH", "/mnt/agents/data/memory.db")
+# Railway 用 /tmp，本地用 ./data
+MEMORY_DB_PATH = os.environ.get("MEMORY_DB_PATH", "/tmp/memory.db")
 MEMORY_MAX_ENTRIES = int(os.environ.get("MEMORY_MAX_ENTRIES", "1000"))
 MEMORY_SUMMARY_THRESHOLD = int(os.environ.get("MEMORY_SUMMARY_THRESHOLD", "50"))
 
-# 确保目录存在
-os.makedirs(os.path.dirname(MEMORY_DB_PATH), exist_ok=True)
+_db_initialized = False
 
 # ============ 数据库初始化 ============
 
@@ -35,7 +35,17 @@ def _get_conn():
 
 
 def init_memory_db():
-    """初始化记忆数据库"""
+    """初始化记忆数据库（延迟初始化，带错误处理）"""
+    global _db_initialized
+    if _db_initialized:
+        return
+    
+    try:
+        os.makedirs(os.path.dirname(MEMORY_DB_PATH), exist_ok=True)
+    except Exception:
+        # Railway 等环境可能没有写权限，改用 /tmp
+        pass
+    
     conn = _get_conn()
     cursor = conn.cursor()
     
@@ -132,7 +142,8 @@ def init_memory_db():
     
     conn.commit()
     conn.close()
-    logger.info("记忆数据库初始化完成")
+    _db_initialized = True
+    logger.info(f"记忆数据库初始化完成: {MEMORY_DB_PATH}")
 
 
 # ============ 对话记录 ============
