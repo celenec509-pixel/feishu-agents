@@ -41,12 +41,12 @@ app = FastAPI(
 )
 
 # ============ 配置 ============
-# 飞书机器人 Webhook 地址（从环境变量读取）
+# 飞书机器人 Webhook 地址（从英文环境变量读取，避免中文Key问题）
 AGENT_WEBHOOKS = {
-    "产品战略官": os.environ.get("WEBHOOK_产品战略官", ""),
-    "用户体验官": os.environ.get("WEBHOOK_用户体验官", ""),
-    "数据研究员": os.environ.get("WEBHOOK_数据研究员", ""),
-    "逻辑校验官": os.environ.get("WEBHOOK_逻辑校验官", ""),
+    "产品战略官": os.environ.get("WEBHOOK_ZHANGLUE", os.environ.get("WEBHOOK_1", "")),
+    "用户体验官": os.environ.get("WEBHOOK_TIYAN", os.environ.get("WEBHOOK_2", "")),
+    "数据研究员": os.environ.get("WEBHOOK_SHUJU", os.environ.get("WEBHOOK_3", "")),
+    "逻辑校验官": os.environ.get("WEBHOOK_LUOJI", os.environ.get("WEBHOOK_4", "")),
 }
 
 # Outgoing 验证密钥（可选）

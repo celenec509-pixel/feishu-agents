@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: feishu-agents
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --proxy-headers
+    envVars:
+      - key: LLM_API_KEY
+        value: sk-1be94803faeb49d180fe0601a5b6d133
+      - key: LLM_BASE_URL
+        value: https://api.deepseek.com/v1
+      - key: LLM_MODEL
+        value: deepseek-chat
+      - key: LLM_TEMPERATURE
+        value: "0.7"
+      - key: LLM_MAX_TOKENS
+        value: "4096"
+      - key: LLM_TIMEOUT
+        value: "120"
+      - key: MODEL_产品战略官
+        value: deepseek-reasoner
+      - key: LLM_API_KEY_产品战略官
+        value: sk-1be94803faeb49d180fe0601a5b6d133
+      - key: LLM_BASE_URL_产品战略官
+        value: https://api.deepseek.com/v1
+      - key: MODEL_用户体验官
+        value: moonshot-v1-128k
+      - key: LLM_API_KEY_用户体验官
+        value: sk-v0IHqo57Bm34cdBF9DGUnvQrDazLpwXcpIN4ztNsRfy3BPGu
+      - key: LLM_BASE_URL_用户体验官
+        value: https://api.moonshot.cn/v1
+      - key: MODEL_数据研究员
+        value: deepseek-reasoner
+      - key: LLM_API_KEY_数据研究员
+        value: sk-1be94803faeb49d180fe0601a5b6d133
+      - key: LLM_BASE_URL_数据研究员
+        value: https://api.deepseek.com/v1
+      - key: MODEL_逻辑校验官
+        value: qwen-max
+      - key: LLM_API_KEY_逻辑校验官
+        value: sk-5a961a476b78444b946fe7deabe06735
+      - key: LLM_BASE_URL_逻辑校验官
+        value: https://dashscope.aliyuncs.com/compatible-mode/v1
+      - key: WEBHOOK_产品战略官
+        value: https://open.feishu.cn/open-apis/bot/v2/hook/994986f8-be94-48c7-8877-f53992cc1808
+      - key: WEBHOOK_用户体验官
+        value: https://open.feishu.cn/open-apis/bot/v2/hook/6f4a95c4-3556-463f-a525-294fdc27feb7
+      - key: WEBHOOK_数据研究员
+        value: https://open.feishu.cn/open-apis/bot/v2/hook/d0fc76d3-8367-48b1-a99a-228d09fb158c
+      - key: WEBHOOK_逻辑校验官
+        value: https://open.feishu.cn/open-apis/bot/v2/hook/45728dbc-ecd8-4ea2-bd69-745341e532ed
+      - key: PORT
+        value: "8000"

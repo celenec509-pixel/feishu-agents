@@ -19,11 +19,12 @@ ANALYSIS_AGENTS = ["产品战略官", "用户体验官", "数据研究员"]
 
 # ============ 模型映射配置 ============
 # 3厂商交叉方案（DeepSeek + Moonshot + 阿里云）
+# 硬编码模型映射，不依赖环境变量（避免中文Key问题）
 AGENT_MODEL_MAP = {
-    "产品战略官": os.environ.get("MODEL_产品战略官", "deepseek-chat"),
-    "用户体验官": os.environ.get("MODEL_用户体验官", "moonshot-v1-128k"),
-    "数据研究员": os.environ.get("MODEL_数据研究员", "deepseek-reasoner"),
-    "逻辑校验官": os.environ.get("MODEL_逻辑校验官", "qwen-max"),
+    "产品战略官": "deepseek-reasoner",   # DeepSeek V4 - 战略推演
+    "用户体验官": "moonshot-v1-128k",   # Kimi 128K - 中文共情
+    "数据研究员": "deepseek-reasoner",  # DeepSeek V4 - 推理+数据
+    "逻辑校验官": "qwen-max",           # 通义千问Max - 逻辑审查
 }
 
 # 模型能力说明

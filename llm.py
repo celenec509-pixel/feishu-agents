@@ -40,23 +40,43 @@ async def call_llm(system_prompt: str, user_message: str, agent_name: str = "def
         逻辑校验官: 注入近期对话记录（供审查使用）
     """
     
-    # 获取通用配置
-    api_key = os.environ.get("LLM_API_KEY", "")
-    if not api_key:
-        raise ValueError("LLM_API_KEY 环境变量未设置")
+    # 按Agent映射到英文环境变量（避免中文Key问题）
+    AGENT_API_KEY_MAP = {
+        "产品战略官": "DEEPSEEK_API_KEY",
+        "用户体验官": "MOONSHOT_API_KEY",
+        "数据研究员": "DEEPSEEK_API_KEY",
+        "逻辑校验官": "QWEN_API_KEY",
+    }
     
-    base_url = os.environ.get("LLM_BASE_URL", "https://api.openai.com/v1").rstrip("/")
-    temperature = float(os.environ.get("LLM_TEMPERATURE", "0.7"))
-    max_tokens = int(os.environ.get("LLM_MAX_TOKENS", "4096"))
-    timeout = int(os.environ.get("LLM_TIMEOUT", "120"))
+    AGENT_BASE_URL_MAP = {
+        "产品战略官": "https://api.deepseek.com/v1",
+        "用户体验官": "https://api.moonshot.cn/v1",
+        "数据研究员": "https://api.deepseek.com/v1",
+        "逻辑校验官": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    }
     
     # 获取该Agent的模型配置
     model = AGENT_MODEL_MAP.get(agent_name, "deepseek-chat")
     
-    # 支持为特定Agent配置独立的API Key和Base URL
-    agent_api_key = os.environ.get(f"LLM_API_KEY_{agent_name}", "") or api_key
-    agent_base_url = os.environ.get(f"LLM_BASE_URL_{agent_name}", "") or base_url
+    # 从英文环境变量读取API Key
+    env_key_name = AGENT_API_KEY_MAP.get(agent_name, "LLM_API_KEY")
+    agent_api_key = os.environ.get(env_key_name, "")
+    
+    if not agent_api_key:
+        # Fallback: 尝试通用Key
+        agent_api_key = os.environ.get("LLM_API_KEY", "")
+        if not agent_api_key:
+            raise ValueError(f"{env_key_name} 环境变量未设置")
+    
+    # 获取Base URL
+    agent_base_url = os.environ.get(f"BASE_URL_{agent_name}", "")
+    if not agent_base_url:
+        agent_base_url = AGENT_BASE_URL_MAP.get(agent_name, "https://api.deepseek.com/v1")
     agent_base_url = agent_base_url.rstrip("/")
+    
+    temperature = float(os.environ.get("LLM_TEMPERATURE", "0.7"))
+    max_tokens = int(os.environ.get("LLM_MAX_TOKENS", "4096"))
+    timeout = int(os.environ.get("LLM_TIMEOUT", "120"))
     
     # 按Agent调整temperature
     effective_temperature = temperature
