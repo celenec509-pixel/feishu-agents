@@ -85,8 +85,20 @@ async def root():
 async def health():
     return {"status": "healthy", "history_count": len(MESSAGE_HISTORY)}
 
+# 英文到中文的映射
+AGENT_NAME_MAP = {
+    "strategy": "产品战略官",
+    "ux": "用户体验官", 
+    "data": "数据研究员",
+    "logic": "逻辑校验官",
+}
+
 @app.post("/webhook/{agent_name}")
 async def feishu_webhook(agent_name: str, request: Request, background_tasks: BackgroundTasks):
+    # 支持中文和英文路径
+    if agent_name in AGENT_NAME_MAP:
+        agent_name = AGENT_NAME_MAP[agent_name]
+    
     if agent_name not in AGENT_NAMES:
         raise HTTPException(status_code=404, detail=f"未知Agent: {agent_name}")
     
