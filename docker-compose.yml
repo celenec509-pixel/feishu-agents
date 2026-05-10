@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  feishu-agents:
+    build: .
+    container_name: feishu-agents
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    restart: unless-stopped
+    volumes:
+      - ./data:/mnt/agents/data  # 记忆数据持久化
+    environment:
+      - PORT=8000
+      # Kimi (Moonshot) 默认配置
+      - LLM_BASE_URL=https://api.moonshot.cn/v1
+      - LLM_MODEL=moonshot-v1-32k
+      # 所有其他配置从 .env 文件读取
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
