@@ -1,6 +1,7 @@
 """
-四Agent飞书消息路由服务 — 完整版
+四Agent飞书消息路由服务 — 完整版（Bot API版）
 支持：产品战略官、用户体验官、数据研究员、逻辑校验官
+使用飞书Bot API发送消息（tenant_access_token方式）
 """
 
 import os
@@ -10,7 +11,6 @@ from datetime import datetime
 
 from fastapi import FastAPI, Request, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
-import httpx
 
 from agents import SYSTEM_PROMPTS, ANALYSIS_AGENTS
 from llm import call_llm
@@ -19,6 +19,7 @@ from memory import (
     save_agent_memory,
     get_all_recent_analysis as get_db_recent_analysis,
 )
+from feishu_bot import send_message_to_chat, send_text_message
 
 # ============ 日志配置 ============
 logging.basicConfig(
@@ -31,16 +32,11 @@ logger = logging.getLogger("feishu-agents")
 app = FastAPI(
     title="四Agent飞书消息路由服务",
     description="产品战略官 | 用户体验官 | 数据研究员 | 逻辑校验官",
-    version="1.0.0"
+    version="2.0.0"
 )
 
-# ============ Webhook 配置（从英文环境变量读取） ============
-AGENT_WEBHOOKS = {
-    "产品战略官": os.environ.get("WEBHOOK_ZHANGLUE", os.environ.get("WEBHOOK_1", "")),
-    "用户体验官": os.environ.get("WEBHOOK_TIYAN", os.environ.get("WEBHOOK_2", "")),
-    "数据研究员": os.environ.get("WEBHOOK_SHUJU", os.environ.get("WEBHOOK_3", "")),
-    "逻辑校验官": os.environ.get("WEBHOOK_LUOJI", os.environ.get("WEBHOOK_4", "")),
-}
+# ============ Agent列表 ============
+AGENT_NAMES = ["产品战略官", "用户体验官", "数据研究员", "逻辑校验官"]
 
 # ============ 消息历史缓存 ============
 MESSAGE_HISTORY = []
@@ -55,39 +51,6 @@ def save_to_history(agent_name, question, answer):
     })
     if len(MESSAGE_HISTORY) > MAX_HISTORY:
         MESSAGE_HISTORY.pop(0)
-
-# ============ 飞书消息发送 ============
-
-async def send_feishu_card(webhook_url, agent_name, content):
-    if not webhook_url:
-        logger.error(f"[{agent_name}] Webhook 未配置")
-        return False
-    
-    color_map = {"产品战略官": "red", "用户体验官": "green", "数据研究员": "yellow", "逻辑校验官": "grey"}
-    color = color_map.get(agent_name, "blue")
-    
-    card = {
-        "msg_type": "interactive",
-        "card": {
-            "config": {"wide_screen_mode": True},
-            "header": {
-                "title": {"tag": "plain_text", "content": f"🤖 {agent_name}"},
-                "template": color
-            },
-            "elements": [
-                {"tag": "div", "text": {"tag": "lark_md", "content": content[:8000]}},
-                {"tag": "note", "elements": [{"tag": "plain_text", "content": f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"}]}
-            ]
-        }
-    }
-    
-    try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(webhook_url, json=card)
-            return resp.json().get("code") == 0
-    except Exception as e:
-        logger.error(f"[{agent_name}] 发送失败: {e}")
-        return False
 
 # ============ 核心处理逻辑 ============
 
@@ -114,7 +77,7 @@ async def root():
     return {
         "status": "running",
         "service": "四Agent飞书消息路由服务",
-        "agents": list(AGENT_WEBHOOKS.keys()),
+        "agents": AGENT_NAMES,
         "history_count": len(MESSAGE_HISTORY)
     }
 
@@ -124,7 +87,7 @@ async def health():
 
 @app.post("/webhook/{agent_name}")
 async def feishu_webhook(agent_name: str, request: Request, background_tasks: BackgroundTasks):
-    if agent_name not in AGENT_WEBHOOKS:
+    if agent_name not in AGENT_NAMES:
         raise HTTPException(status_code=404, detail=f"未知Agent: {agent_name}")
     
     try:
@@ -144,6 +107,9 @@ async def feishu_webhook(agent_name: str, request: Request, background_tasks: Ba
     event = body.get("event", {})
     message = event.get("message", {})
     
+    # 提取群聊ID（Bot API发消息需要）
+    chat_id = message.get("chat_id", "") or event.get("chat", {}).get("chat_id", "")
+    
     content_str = message.get("content", "{}")
     try:
         content_json = json.loads(content_str) if isinstance(content_str, str) else content_str
@@ -151,16 +117,16 @@ async def feishu_webhook(agent_name: str, request: Request, background_tasks: Ba
     except Exception:
         text = str(content_str)
     
-    for name in AGENT_WEBHOOKS.keys():
+    for name in AGENT_NAMES:
         text = text.replace(f"@{name}", "").strip()
     
     if not text:
         text = "你好，请提出问题。"
     
-    logger.info(f"[{agent_name}] 提问: {text[:200]}")
+    logger.info(f"[{agent_name}] chat_id={chat_id}, 提问: {text[:200]}")
     
     # 异步处理
-    async def process_and_reply():
+    async def process_and_reply(cid=chat_id):
         try:
             reply, tokens_used, model_used = await handle_agent_request(agent_name, text)
             save_to_history(agent_name, text, reply)
@@ -172,8 +138,16 @@ async def feishu_webhook(agent_name: str, request: Request, background_tasks: Ba
             except Exception as mem_err:
                 logger.error(f"[{agent_name}] 记忆保存失败: {mem_err}")
             
-            webhook_url = AGENT_WEBHOOKS[agent_name]
-            await send_feishu_card(webhook_url, agent_name, reply)
+            # 使用Bot API发送消息到群聊
+            if cid:
+                success = await send_message_to_chat(agent_name, cid, reply)
+                if success:
+                    logger.info(f"[{agent_name}] 消息发送成功")
+                else:
+                    logger.error(f"[{agent_name}] 消息发送失败")
+            else:
+                logger.error(f"[{agent_name}] 缺少chat_id，无法发送回复")
+            
             logger.info(f"[{agent_name}] 处理完成, model={model_used}")
         except Exception as e:
             logger.error(f"[{agent_name}] 处理失败: {e}")
@@ -196,7 +170,7 @@ async def api_ask(request: Request):
     agent_name = body.get("agent", "产品战略官")
     question = body.get("question", "")
     
-    if agent_name not in AGENT_WEBHOOKS:
+    if agent_name not in AGENT_NAMES:
         return JSONResponse({"code": 404, "msg": f"未知Agent: {agent_name}"})
     if not question:
         return JSONResponse({"code": 400, "msg": "问题不能为空"})
