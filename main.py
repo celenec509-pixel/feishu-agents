@@ -178,19 +178,32 @@ async def feishu_webhook(agent_name: str, request: Request, background_tasks: Ba
     logger.info(f"[WEBHOOK] chat_id={chat_id}, text={text[:300]}")
 
     # ============ 严格的@mention检查 ============
-    # 1. 提取消息中所有被@的机器人
-    mentioned_agents = extract_mentioned_agents(text)
+    # 从飞书mentions字段提取被@的实体（这才是准确的）
+    mentions = message.get("mentions", [])
+    logger.info(f"[WEBHOOK] mentions字段: {json.dumps(mentions, ensure_ascii=False)[:500]}")
+
+    # 从mentions中提取被@的机器人名称
+    mentioned_agents = []
+    for mention in mentions:
+        mention_name = mention.get("name", "")
+        if mention_name in AGENT_NAMES:
+            mentioned_agents.append(mention_name)
+
+    # 如果从mentions没提取到，再从文本内容尝试（fallback）
+    if not mentioned_agents:
+        mentioned_agents = extract_mentioned_agents(text)
+
     logger.info(f"[WEBHOOK] 被@的机器人: {mentioned_agents}")
 
-    # 2. 检查当前机器人是否被@
+    # 检查当前机器人是否被@
     is_mentioned = agent_name in mentioned_agents
 
-    # 3. 如果没有@任何机器人，不回复
+    # 如果没有@任何机器人，不回复
     if not mentioned_agents:
         logger.info(f"[WEBHOOK] 消息未@任何机器人，忽略")
         return JSONResponse({"code": 0, "msg": "ok"})
 
-    # 4. 如果@了其他机器人但不是当前机器人，不回复
+    # 如果@了其他机器人但不是当前机器人，不回复
     if not is_mentioned:
         logger.info(f"[WEBHOOK] 消息@了其他机器人({mentioned_agents})，不是当前机器人({agent_name})，忽略")
         return JSONResponse({"code": 0, "msg": "ok"})
