@@ -85,9 +85,12 @@ async def get_tenant_access_token(agent_name: str) -> str:
 
 async def send_message_to_chat(agent_name: str, chat_id: str, content: str):
     """使用Bot API发送消息到群聊"""
+    logger.info(f"[BOT] 开始发送: agent={agent_name}, chat_id={chat_id}, content_len={len(content)}")
     try:
         # 获取token
+        logger.info(f"[BOT] 获取token...")
         token = await get_tenant_access_token(agent_name)
+        logger.info(f"[BOT] token获取成功: {token[:20]}...")
         
         # 构建消息卡片
         color_map = {"产品战略官": "red", "用户体验官": "green", "数据研究员": "yellow", "逻辑校验官": "grey"}
@@ -115,6 +118,7 @@ async def send_message_to_chat(agent_name: str, chat_id: str, content: str):
         }
         
         # 调用飞书API发送消息
+        logger.info(f"[BOT] 调用飞书API发送消息...")
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
                 "https://open.feishu.cn/open-apis/im/v1/messages",
@@ -128,6 +132,7 @@ async def send_message_to_chat(agent_name: str, chat_id: str, content: str):
             )
             
             result = resp.json()
+            logger.info(f"[BOT] 飞书API响应: status={resp.status_code}, code={result.get('code')}, msg={result.get('msg', 'N/A')}")
             if result.get("code") == 0:
                 logger.info(f"[{agent_name}] 消息发送成功")
                 return True

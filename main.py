@@ -152,8 +152,11 @@ async def feishu_webhook(agent_name: str, request: Request, background_tasks: Ba
     
     # 异步处理
     async def process_and_reply(cid=chat_id):
+        logger.info(f"[TASK] 开始处理: agent={agent_name}, chat_id={cid}, text={text[:100]}")
         try:
+            logger.info(f"[TASK] 调用LLM...")
             reply, tokens_used, model_used = await handle_agent_request(agent_name, text)
+            logger.info(f"[TASK] LLM返回: model={model_used}, reply_len={len(reply)}")
             save_to_history(agent_name, text, reply)
             
             try:
