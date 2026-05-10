@@ -21,11 +21,11 @@ AGENT_APP_CREDENTIALS = {
     },
     "用户体验官": {
         "app_id": os.environ.get("FEISHU_APPID_TIYAN", os.environ.get("FEISHU_APPID_2", "cli_aa8a9784bc381bd0")),
-        "app_secret": os.environ.get("FEISHU_SECRET_TIYAN", os.environ.get("FEISHU_SECRET_2", "AKM7QBW3awqTk3sT5LizscYJfqxvCA1G")),
+        "app_secret": os.environ.get("FEISHU_SECRET_TIYAN", os.environ.get("FEISHU_SECRET_2", "xSjCZGNblGEcBZxzNMqQPe2YIlCIaFBD")),
     },
     "数据研究员": {
         "app_id": os.environ.get("FEISHU_APPID_SHUJU", os.environ.get("FEISHU_APPID_3", "cli_aa8a97b6dd78dbdd")),
-        "app_secret": os.environ.get("FEISHU_SECRET_SHUJU", os.environ.get("FEISHU_SECRET_3", "mqMq5ScQjDBrwhz5E9TBld3BfiklwlMmP")),
+        "app_secret": os.environ.get("FEISHU_SECRET_SHUJU", os.environ.get("FEISHU_SECRET_3", "fy6GFIP8rUqOpc9oEjvx7eKlcuHJcoNQ")),
     },
     "逻辑校验官": {
         "app_id": os.environ.get("FEISHU_APPID_LUOJI", os.environ.get("FEISHU_APPID_4", "cli_aa8a97a2ee7a9bc4")),
@@ -54,6 +54,9 @@ async def get_tenant_access_token(agent_name: str) -> str:
     
     app_id = creds["app_id"]
     app_secret = creds["app_secret"]
+    
+    # 调试：打印实际使用的凭证（隐藏部分）
+    logger.info(f"[TOKEN] {agent_name}: app_id={app_id}, secret_len={len(app_secret)}, secret_preview={app_secret[:10]}...{app_secret[-5:]}")
     
     # 调用飞书API获取token
     try:
