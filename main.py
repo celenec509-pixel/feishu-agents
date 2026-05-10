@@ -114,6 +114,14 @@ async def feishu_webhook(agent_name: str, request: Request, background_tasks: Ba
     header = body.get("header", {})
     logger.info(f"[WEBHOOK] event_type={header.get('event_type')}, app_id={header.get('app_id')}")
     
+    # 记录完整event结构（用于调试格式问题）
+    event_raw = body.get("event", {})
+    logger.info(f"[WEBHOOK] event_keys={list(event_raw.keys())}")
+    if "message" in event_raw:
+        msg_raw = event_raw["message"]
+        logger.info(f"[WEBHOOK] message_keys={list(msg_raw.keys())}")
+        logger.info(f"[WEBHOOK] message_full={json.dumps(msg_raw, ensure_ascii=False)[:500]}")
+    
     # ============ 处理飞书URL验证（challenge） ============
     if body.get("type") == "url_verification":
         challenge = body.get("challenge", "")
