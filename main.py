@@ -252,9 +252,13 @@ async def feishu_webhook(
     background_tasks: BackgroundTasks
 ):
     """
-    接收飞书 Outgoing Webhook
+    接收飞书事件订阅回调
     
-    每个机器人配置不同的 Outgoing URL:
+    支持飞书事件订阅的两种请求：
+    1. URL验证（challenge）- 飞书首次配置时验证URL
+    2. 消息事件 - 用户@机器人时触发
+    
+    每个机器人配置不同的URL:
     - /webhook/产品战略官
     - /webhook/用户体验官
     - /webhook/数据研究员
@@ -272,7 +276,21 @@ async def feishu_webhook(
     
     logger.info(f"[{agent_name}] 收到请求: {json.dumps(body, ensure_ascii=False)[:500]}")
     
-    # 提取消息内容（飞书 outgoing 格式）
+    # ============ 关键：处理飞书URL验证（challenge） ============
+    # 飞书首次配置事件订阅URL时，会发送验证请求
+    if body.get("type") == "url_verification":
+        challenge = body.get("challenge", "")
+        logger.info(f"[{agent_name}] 处理URL验证, challenge={challenge}")
+        return JSONResponse({
+            "challenge": challenge  # 必须返回challenge值
+        })
+    
+    # ============ 处理消息事件 ============
+    # 飞书事件订阅的消息格式
+    header = body.get("header", {})
+    event_type = header.get("event_type", "")
+    
+    # 提取消息内容（飞书事件订阅格式）
     event = body.get("event", {})
     message = event.get("message", {})
     
@@ -331,9 +349,9 @@ async def feishu_webhook(
     background_tasks.add_task(process_and_reply)
     
     return JSONResponse({
+        "challenge": body.get("challenge", ""),  # 如果有challenge也要返回
         "code": 0,
-        "msg": "ok",
-        "data": {"message": f"{agent_name} 正在处理..."}
+        "msg": "ok"
     })
 
 
