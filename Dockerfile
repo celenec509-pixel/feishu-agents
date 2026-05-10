@@ -6,8 +6,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 复制应用代码（含记忆系统）
-COPY main.py agents.py llm.py memory.py ./
+# 复制应用代码（含Bot API模块和记忆系统）
+COPY main.py agents.py llm.py memory.py feishu_bot.py ./
 
 # 创建数据目录（记忆数据持久化）
 RUN mkdir -p /mnt/agents/data
