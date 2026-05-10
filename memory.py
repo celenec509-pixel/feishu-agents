@@ -35,16 +35,20 @@ def _get_conn():
 
 
 def init_memory_db():
-    """初始化记忆数据库（延迟初始化，带错误处理）"""
-    global _db_initialized
+    """初始化记忆数据库（同步函数，模块导入时调用）"""
+    global _db_initialized, MEMORY_DB_PATH
     if _db_initialized:
         return
     
-    try:
-        os.makedirs(os.path.dirname(MEMORY_DB_PATH), exist_ok=True)
-    except Exception:
-        # Railway 等环境可能没有写权限，改用 /tmp
-        pass
+    # 确保数据库目录存在
+    db_dir = os.path.dirname(MEMORY_DB_PATH)
+    if db_dir:
+        try:
+            os.makedirs(db_dir, exist_ok=True)
+        except Exception:
+            # Railway等环境可能没有写权限，改用/tmp
+            MEMORY_DB_PATH = "/tmp/memory.db"
+            os.makedirs("/tmp", exist_ok=True)
     
     conn = _get_conn()
     cursor = conn.cursor()
